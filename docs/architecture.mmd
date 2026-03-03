@@ -1,0 +1,61 @@
+graph TD
+    subgraph AWS Cloud
+        subgraph VPC
+            subgraph Public Subnets
+                ALB[Application Load Balancer]
+                NAT[NAT Gateway]
+            end
+            subgraph Private Subnets
+                subgraph EKS Cluster
+                    subgraph App Namespace
+                        APP[Sample Microservice\n/metrics endpoint]
+                    end
+                    subgraph Monitoring Namespace
+                        PROM[Prometheus]
+                        GRAF[Grafana]
+                        AM[Alertmanager]
+                        NE[Node Exporter\nDaemonSet]
+                        KSM[kube-state-metrics]
+                        OTEL[OTel Collector]
+                    end
+                    subgraph Logging Namespace
+                        FLU[Fluentd\nDaemonSet]
+                    end
+                end
+                RDS[(RDS MySQL)]
+            end
+        end
+        AMP[Amazon Managed\nPrometheus]
+        AMG[Amazon Managed\nGrafana]
+        CW[CloudWatch\nLogs & Alarms]
+        SNS[SNS Topic]
+        XRAY[AWS X-Ray]
+        IAM[IAM / IRSA]
+    end
+
+    subgraph Notification Channels
+        SLACK[Slack]
+        EMAIL[Email]
+    end
+
+    USER[End Users] --> ALB
+    ALB --> APP
+    APP -- exposes /metrics --> PROM
+    NE -- node metrics --> PROM
+    KSM -- k8s metrics --> PROM
+    PROM -- remote_write --> AMP
+    PROM -- fires alerts --> AM
+    AM -- routes alerts --> SNS
+    SNS --> SLACK
+    SNS --> EMAIL
+    GRAF -- queries --> PROM
+    GRAF -- queries --> AMP
+    AMG -- queries --> AMP
+    APP -- OTLP traces --> OTEL
+    OTEL -- sends traces --> XRAY
+    FLU -- ships logs --> CW
+    RDS -- CloudWatch metrics --> CW
+    CW -- alarms --> SNS
+    IAM -. IRSA .-> PROM
+    IAM -. IRSA .-> OTEL
+    IAM -. IRSA .-> FLU
