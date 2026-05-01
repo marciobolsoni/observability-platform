@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scalable Observability Platform on AWS — Marcio Bolsoni</title>
+  <meta name="description" content="Production-grade observability stack on AWS using Prometheus, Grafana, EKS, and Amazon Managed Services." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0f1e;
+      --bg2: #0f1629;
+      --card: #131d35;
+      --border: #1e2d50;
+      --accent: #38bdf8;
+      --accent2: #818cf8;
+      --accent3: #34d399;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+    }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    nav { position: fixed; top: 0; width: 100%; background: rgba(10,15,30,0.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); z-index: 100; padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 60px; }
+    .nav-logo { font-weight: 700; font-size: 1rem; color: var(--accent); }
+    .nav-links { display: flex; gap: 1.5rem; font-size: 0.875rem; color: var(--muted); }
+    .nav-links a { color: var(--muted); }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+    .hero { min-height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 6rem 2rem 4rem; position: relative; overflow: hidden; }
+    .hero::before { content: ''; position: absolute; top: -200px; right: -200px; width: 600px; height: 600px; background: radial-gradient(circle, rgba(56,189,248,0.08) 0%, transparent 70%); pointer-events: none; }
+    .hero::after { content: ''; position: absolute; bottom: -200px; left: -200px; width: 600px; height: 600px; background: radial-gradient(circle, rgba(129,140,248,0.08) 0%, transparent 70%); pointer-events: none; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.3); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.8rem; color: var(--accent); margin-bottom: 1.5rem; }
+    .hero h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 800; line-height: 1.15; margin-bottom: 1.5rem; }
+    .hero h1 span { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero p { font-size: 1.125rem; color: var(--muted); max-width: 640px; margin: 0 auto 2.5rem; }
+    .hero-btns { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn { padding: 0.75rem 1.75rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; }
+    .btn-primary { background: var(--accent); color: #0a0f1e; }
+    .btn-primary:hover { background: #7dd3fc; text-decoration: none; }
+    .btn-outline { border: 1px solid var(--border); color: var(--text); }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1.5rem; max-width: 800px; margin: 3rem auto 0; }
+    .stat { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center; }
+    .stat-value { font-size: 2rem; font-weight: 800; color: var(--accent); }
+    .stat-label { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; }
+    section { padding: 5rem 2rem; max-width: 1100px; margin: 0 auto; }
+    .section-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-bottom: 0.75rem; }
+    .section-title { font-size: clamp(1.5rem, 3vw, 2.25rem); font-weight: 700; margin-bottom: 1rem; }
+    .section-sub { color: var(--muted); max-width: 560px; }
+    .section-header { margin-bottom: 3rem; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.5rem; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 1.75rem; transition: border-color 0.2s; }
+    .card:hover { border-color: var(--accent); }
+    .card-icon { font-size: 2rem; margin-bottom: 1rem; }
+    .card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .card p { color: var(--muted); font-size: 0.9rem; }
+    .stack-table { width: 100%; border-collapse: collapse; }
+    .stack-table th { text-align: left; padding: 0.75rem 1rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .stack-table td { padding: 0.9rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+    .stack-table tr:last-child td { border-bottom: none; }
+    .stack-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .tag { display: inline-flex; align-items: center; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.2); color: var(--accent); padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; margin: 0.1rem; }
+    .tag-green { background: rgba(52,211,153,0.1); border-color: rgba(52,211,153,0.2); color: var(--accent3); }
+    .tag-purple { background: rgba(129,140,248,0.1); border-color: rgba(129,140,248,0.2); color: var(--accent2); }
+    .alert-item { display: flex; align-items: flex-start; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid var(--border); }
+    .alert-item:last-child { border-bottom: none; }
+    .alert-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent3); flex-shrink: 0; margin-top: 6px; }
+    .alert-dot.yellow { background: #fbbf24; }
+    .alert-dot.red { background: #f87171; }
+    .alert-name { font-weight: 600; font-size: 0.9rem; }
+    .alert-desc { color: var(--muted); font-size: 0.85rem; }
+    .arch-component { display: flex; align-items: center; gap: 1rem; padding: 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 0.75rem; }
+    .arch-icon { font-size: 1.5rem; width: 48px; text-align: center; flex-shrink: 0; }
+    .arch-name { font-weight: 600; font-size: 0.95rem; }
+    .arch-desc { color: var(--muted); font-size: 0.82rem; }
+    footer { border-top: 1px solid var(--border); padding: 2.5rem 2rem; text-align: center; color: var(--muted); font-size: 0.875rem; }
+    footer a { color: var(--accent); }
+  </style>
+</head>
+<body>
+<nav>
+  <span class="nav-logo">⚡ Observability Platform</span>
+  <div class="nav-links">
+    <a href="#architecture">Architecture</a>
+    <a href="#monitoring">Monitoring</a>
+    <a href="#alerts">Alerts</a>
+    <a href="https://github.com/marciobolsoni/observability-platform" target="_blank">GitHub ↗</a>
+  </div>
+</nav>
+<div class="hero">
+  <div style="position:relative;z-index:1;">
+    <div class="hero-badge">🔭 AWS · EKS · Prometheus · Grafana</div>
+    <h1>Scalable <span>Observability</span><br/>Stack on AWS</h1>
+    <p>Production-grade monitoring platform combining Prometheus, Grafana, AWS X-Ray and CloudWatch — giving full-stack visibility into cloud-native applications at scale.</p>
+    <div class="hero-btns">
+      <a href="https://github.com/marciobolsoni/observability-platform" target="_blank" class="btn btn-primary">View on GitHub →</a>
+      <a href="https://marciobolsoni.cloud" target="_blank" class="btn btn-outline">Portfolio ↗</a>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-value">5+</div><div class="stat-label">AWS Services</div></div>
+      <div class="stat"><div class="stat-value">4</div><div class="stat-label">Monitoring Layers</div></div>
+      <div class="stat"><div class="stat-value">p99</div><div class="stat-label">Latency Tracked</div></div>
+      <div class="stat"><div class="stat-value">HA</div><div class="stat-label">Multi-AZ Ready</div></div>
+    </div>
+  </div>
+</div>
+<section id="architecture">
+  <div class="section-header">
+    <div class="section-label">Infrastructure</div>
+    <h2 class="section-title">Architecture Components</h2>
+    <p class="section-sub">Built on Amazon EKS with a blend of self-managed open-source tools and AWS managed services.</p>
+  </div>
+  <div class="grid-2">
+    <div>
+      <div class="arch-component"><div class="arch-icon">☸️</div><div><div class="arch-name">Amazon EKS</div><div class="arch-desc">Managed Kubernetes providing container orchestration for the entire observability stack.</div></div></div>
+      <div class="arch-component"><div class="arch-icon">📊</div><div><div class="arch-name">Prometheus</div><div class="arch-desc">Metrics collection and alerting toolkit scraping all infrastructure and application endpoints.</div></div></div>
+      <div class="arch-component"><div class="arch-icon">📈</div><div><div class="arch-name">Grafana</div><div class="arch-desc">Visualization layer with pre-built dashboards for infrastructure, Kubernetes and application metrics.</div></div></div>
+      <div class="arch-component"><div class="arch-icon">🔔</div><div><div class="arch-name">Alertmanager</div><div class="arch-desc">Routes Prometheus alerts to Slack, Email and Amazon SNS notification channels.</div></div></div>
+    </div>
+    <div>
+      <div class="arch-component"><div class="arch-icon">🚀</div><div><div class="arch-name">Amazon Managed Prometheus (AMP)</div><div class="arch-desc">Fully managed Prometheus-compatible service for containerized applications at scale.</div></div></div>
+      <div class="arch-component"><div class="arch-icon">🖥️</div><div><div class="arch-name">Amazon Managed Grafana (AMG)</div><div class="arch-desc">Managed Grafana service simplifying dashboard creation, management, and sharing.</div></div></div>
+      <div class="arch-component"><div class="arch-icon">🔍</div><div><div class="arch-name">AWS X-Ray</div><div class="arch-desc">Distributed tracing for analyzing and debugging production distributed applications.</div></div></div>
+      <div class="arch-component"><div class="arch-icon">☁️</div><div><div class="arch-name">Amazon CloudWatch</div><div class="arch-desc">Unified monitoring for AWS resources with logs, metrics, and dashboards.</div></div></div>
+    </div>
+  </div>
+</section>
+<section id="monitoring" style="background: var(--bg2); max-width:100%; padding: 5rem 2rem;">
+  <div style="max-width:1100px; margin:0 auto;">
+    <div class="section-header">
+      <div class="section-label">Observability</div>
+      <h2 class="section-title">Monitoring Strategy</h2>
+      <p class="section-sub">Full-stack visibility across infrastructure, Kubernetes, application and database layers.</p>
+    </div>
+    <div class="card">
+      <table class="stack-table">
+        <thead><tr><th>Layer</th><th>Key Metrics</th><th>Tools</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Infrastructure</strong></td><td>CPU &amp; memory, disk I/O, network traffic</td><td><span class="tag">node_exporter</span><span class="tag">kube-state-metrics</span></td></tr>
+          <tr><td><strong>Kubernetes</strong></td><td>Pod health, restart count, resource limits vs usage, deployment status</td><td><span class="tag">kube-state-metrics</span></td></tr>
+          <tr><td><strong>Application</strong></td><td>HTTP request rate, error rate (5xx), latency (p95, p99), throughput</td><td><span class="tag tag-purple">Prometheus client libs</span></td></tr>
+          <tr><td><strong>Database</strong></td><td>RDS CPU, connections count, read/write latency</td><td><span class="tag tag-green">CloudWatch exporter</span><span class="tag tag-green">AMP</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+<section id="alerts">
+  <div class="section-header">
+    <div class="section-label">Alerting</div>
+    <h2 class="section-title">Alert Rules &amp; Channels</h2>
+    <p class="section-sub">Proactive alerts ensure critical issues are caught before they impact users.</p>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3 style="margin-bottom:1.25rem;">Sample Alert Rules</h3>
+      <div class="alert-item"><div class="alert-dot yellow"></div><div><div class="alert-name">High CPU Usage</div><div class="alert-desc">CPU &gt; 80% sustained for 5 minutes</div></div></div>
+      <div class="alert-item"><div class="alert-dot red"></div><div><div class="alert-name">Pod CrashLoopBackOff</div><div class="alert-desc">Pod stuck in crash-restart loop</div></div></div>
+      <div class="alert-item"><div class="alert-dot red"></div><div><div class="alert-name">High Error Rate</div><div class="alert-desc">HTTP 5xx error rate &gt; 5%</div></div></div>
+      <div class="alert-item"><div class="alert-dot yellow"></div><div><div class="alert-name">High Latency</div><div class="alert-desc">p95 latency &gt; 500ms</div></div></div>
+      <div class="alert-item"><div class="alert-dot yellow"></div><div><div class="alert-name">RDS Connections</div><div class="alert-desc">Connections approaching limit</div></div></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:1.25rem;">Notification Channels</h3>
+      <div class="alert-item"><div class="alert-dot"></div><div><div class="alert-name">Slack</div><div class="alert-desc">Real-time channel alerts with runbook links and severity labels</div></div></div>
+      <div class="alert-item"><div class="alert-dot"></div><div><div class="alert-name">Email</div><div class="alert-desc">Critical and warning alerts delivered to on-call distribution list</div></div></div>
+      <div class="alert-item"><div class="alert-dot"></div><div><div class="alert-name">Amazon SNS</div><div class="alert-desc">Fan-out to PagerDuty, Lambda functions and other subscribers</div></div></div>
+    </div>
+  </div>
+</section>
+<section style="background: var(--bg2); max-width:100%; padding: 5rem 2rem;">
+  <div style="max-width:1100px; margin:0 auto;">
+    <div class="grid-2">
+      <div>
+        <div class="section-label">Security</div>
+        <h2 class="section-title">Security Model</h2>
+        <div class="grid-3" style="margin-top:1.5rem;">
+          <div class="card"><div class="card-icon">🔐</div><h3>IRSA</h3><p>IAM Roles for Service Accounts — fine-grained access control for Kubernetes service accounts.</p></div>
+          <div class="card"><div class="card-icon">🔒</div><h3>Private Subnets</h3><p>All critical components deployed in private subnets, minimizing public internet exposure.</p></div>
+          <div class="card"><div class="card-icon">🔑</div><h3>TLS Encryption</h3><p>Prometheus ↔ Grafana communication encrypted in transit with TLS certificates.</p></div>
+        </div>
+      </div>
+      <div>
+        <div class="section-label">Deployment Modes</div>
+        <h2 class="section-title">Cost Configurations</h2>
+        <div class="card" style="margin-top:1.5rem;">
+          <table class="stack-table">
+            <thead><tr><th>Component</th><th>Budget Lab</th><th>Production</th></tr></thead>
+            <tbody>
+              <tr><td>Prometheus</td><td>Self-managed on EKS</td><td><span class="tag tag-green">AMP Managed</span></td></tr>
+              <tr><td>Grafana</td><td>Self-hosted EC2</td><td><span class="tag tag-green">AMG Managed</span></td></tr>
+              <tr><td>EKS</td><td>Minimal nodes</td><td><span class="tag tag-purple">Multi-AZ HA</span></td></tr>
+              <tr><td>Architecture</td><td>Single AZ</td><td><span class="tag tag-purple">High Availability</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<section>
+  <div class="section-header">
+    <div class="section-label">Stack</div>
+    <h2 class="section-title">Technologies Used</h2>
+  </div>
+  <div class="grid-3">
+    <div class="card"><div class="card-icon">☸️</div><h3>Kubernetes / EKS</h3><p>Container orchestration with managed control plane on AWS.</p></div>
+    <div class="card"><div class="card-icon">📊</div><h3>Prometheus + Grafana</h3><p>Industry-standard open-source metrics and visualization stack.</p></div>
+    <div class="card"><div class="card-icon">🏗️</div><h3>Terraform</h3><p>Infrastructure as Code for reproducible, version-controlled deployments.</p></div>
+    <div class="card"><div class="card-icon">🔍</div><h3>AWS X-Ray</h3><p>End-to-end distributed tracing across microservices.</p></div>
+    <div class="card"><div class="card-icon">☁️</div><h3>CloudWatch</h3><p>AWS-native logs, metrics, and dashboards with automated alarms.</p></div>
+    <div class="card"><div class="card-icon">🐳</div><h3>Docker</h3><p>Containerized deployment of all monitoring components.</p></div>
+  </div>
+</section>
+<footer>
+  <p>Built by <a href="https://marciobolsoni.cloud">Marcio Bolsoni</a> · Cloud AWS Developer &amp; Infrastructure Architect</p>
+  <p style="margin-top:0.5rem;"><a href="https://github.com/marciobolsoni/observability-platform">GitHub Repository</a> · <a href="https://marciobolsoni.cloud/projects">Back to Portfolio</a></p>
+</footer>
+</body>
+</html>
